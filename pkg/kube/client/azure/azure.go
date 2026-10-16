@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/Azure/kubelogin/pkg/token"
 	"github.com/spf13/pflag"
@@ -32,6 +33,19 @@ const (
 
 	kubeloginCLIFlagServerID = "server-id"
 )
+
+// Environment variables injected by the Azure Workload Identity webhook into
+// pods labelled azure.workload.identity/use: "true".
+const (
+	envFederatedTokenFile = "AZURE_FEDERATED_TOKEN_FILE"
+)
+
+func federatedTokenFile(credentials map[string]string) string {
+	if f := credentials[CredentialsKeyFederatedTokenFile]; f != "" {
+		return f
+	}
+	return os.Getenv(envFederatedTokenFile)
+}
 
 func kubeloginTokenOptionsFromRESTConfig(rc *rest.Config) (*token.Options, error) {
 	opts := &token.Options{}
@@ -84,7 +98,7 @@ func WrapRESTConfig(_ context.Context, rc *rest.Config, credentials []byte, iden
 		opts.ClientID = m[CredentialsKeyClientID]
 		opts.TenantID = m[CredentialsKeyTenantID]
 		opts.ServerID = m[CredentialsKeyServerID]
-		opts.FederatedTokenFile = m[CredentialsKeyFederatedTokenFile]
+		opts.FederatedTokenFile = federatedTokenFile(m)
 		opts.AuthorityHost = m[CredentialsKeyAuthorityHost]
 	}
 
